@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .panel {
+    @apply bg-base text-secondary rounded p-4 shadow-xl;
+  }
+  .bubble-user {
+    @apply bg-panel text-white rounded-xl p-3;
+  }
+  .bubble-ai {
+    @apply bg-chat text-primary rounded-xl p-3;
+  }
+}
