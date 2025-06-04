@@ -13,3 +13,26 @@
     @apply bg-chat text-primary rounded-xl p-3;
   }
 }
+
+/* Custom scrollbar theme for Hypewave */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #3dadff; /* Flame blue */
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #61caff; /* Lighter flame blue */
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
