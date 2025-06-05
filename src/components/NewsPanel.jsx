@@ -1,27 +1,27 @@
-// src/components/NewsPanel.jsx
 import { useEffect, useRef, useState } from "react";
+import EmbeddedTweet from "./EmbeddedTweet"; // 🟢 Required
 
 export default function NewsPanel() {
-  const [alerts, setAlerts] = useState([]);
+  const [tweets, setTweets] = useState([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef(null);
 
-  const fetchAlerts = async () => {
+  const fetchTweets = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/alerts/live");
+      const res = await fetch("http://localhost:8000/news/latest");
       const data = await res.json();
-      setAlerts(data.live_alerts || []);
+      setTweets(data || []);
       setLoading(false);
     } catch (err) {
-      console.error("Failed to fetch alerts", err);
+      console.error("Failed to fetch tweets", err);
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 60000);
+    fetchTweets();
+    const interval = setInterval(fetchTweets, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -29,37 +29,35 @@ export default function NewsPanel() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [alerts]);
+  }, [tweets]);
 
   return (
     <div className="flex flex-col h-full px-4 py-4 rounded bg-base shadow-xl">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-secondary text-lg font-semibold">News & Alpha</h2>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center space-x-2">
+          <h2 className="text-sm text-white/70 font-semibold tracking-wide">News & Alpha</h2>
+        </div>
         <button
-          onClick={fetchAlerts}
-          className="text-sm px-2 py-1 bg-primary/20 hover:bg-primary/30 text-primary rounded"
+          onClick={fetchTweets}
+          className="text-xs px-3 py-1 bg-primary/20 hover:bg-primary/30 text-white/80 rounded"
         >
           Refresh
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
         {loading ? (
           <div className="text-primary text-sm">Loading...</div>
-        ) : alerts.length === 0 ? (
-          <div className="text-sm text-primary/50">No alerts found</div>
+        ) : tweets.length === 0 ? (
+          <div className="text-sm text-white/50">No tweets found</div>
         ) : (
-          alerts.map((a, idx) => (
-            <div
-              key={idx}
-              className="bg-panel p-3 rounded-md border border-primary/20 shadow text-sm text-white"
-            >
-              <div className="text-xs text-primary/60 mb-1">
-                {new Date(a.created_at).toLocaleString()}
-              </div>
-              <div>{a.output?.result}</div>
-            </div>
-          ))
+          tweets.map((tweet, idx) =>
+            tweet.tweet_url ? (
+              <EmbeddedTweet key={idx} tweetUrl={tweet.tweet_url} />
+            ) : (
+              <div key={idx} className="text-red-500 text-xs">Invalid tweet</div>
+            )
+          )
         )}
       </div>
     </div>
