@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import EmbeddedTweet from "./EmbeddedTweet"; // 🟢 Required
+import API_BASE_URL from "../config";
 
 export default function NewsPanel() {
   const [tweets, setTweets] = useState([]);
@@ -9,7 +10,7 @@ export default function NewsPanel() {
   const fetchTweets = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/news/latest");
+      const res = await fetch(`${API_BASE_URL}/news/latest`);
       const data = await res.json();
       setTweets(data || []);
       setLoading(false);
@@ -35,7 +36,7 @@ export default function NewsPanel() {
     <div className="flex flex-col h-full px-4 py-4 rounded bg-base shadow-xl">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center space-x-2">
-          <h2 className="text-sm text-white/70 font-semibold tracking-wide">News & Alpha</h2>
+          <h2 className="text-sm text-primary/80 font-semibold tracking-wide">News & Alpha</h2>
         </div>
         <button
           onClick={fetchTweets}

@@ -1,6 +1,7 @@
 // src/components/ChatPanel.jsx
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
+import API_BASE_URL from "../config";
 
 export default function ChatPanel() {
   const [input, setInput] = useState("");
@@ -32,7 +33,7 @@ export default function ChatPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:8000/chat", {
+      const res = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
         body: formData,
       });
@@ -144,9 +145,9 @@ export default function ChatPanel() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-4 px-3 py-2 bg-[#061738] rounded-t-lg border-b border-primary/30">
-        <h2 className="text-lg font-light text-primary/80 tracking-wider">
-          Hypewave Intelligence Terminal
+      <div className="flex items-center justify-between mb-4 px-4 py-1 bg-[#061738] rounded-t-lg border-b border-primary/30">
+        <h2 className="text-lb font-semibold text-primary/80 tracking-wider">
+          Model: H2 turbo
         </h2>
       </div>
 
@@ -200,7 +201,14 @@ export default function ChatPanel() {
               />
             )}
 
-            {m.type !== "loading" && <div>{m.text}</div>}
+            {m.type !== "loading" && (
+              <div
+                dangerouslySetInnerHTML={{ __html: m.text }}
+                className="text-[#bfc9dc] leading-relaxed"
+              ></div>
+            )}
+
+
           </div>
         ))}
       </div>
