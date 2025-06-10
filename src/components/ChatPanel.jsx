@@ -3,8 +3,11 @@ import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import API_BASE_URL from "../config";
 
+
 export default function ChatPanel() {
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState("s1"); // default model
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -145,11 +148,52 @@ export default function ChatPanel() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-4 px-4 py-1 bg-[#061738] rounded-t-lg border-b border-primary/30">
-        <h2 className="text-lb font-semibold text-primary/80 tracking-wider">
-          Model: H2 turbo
-        </h2>
+      <div className="relative mb-4 px-4">
+        <div className="relative inline-block w-max">
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-1 px-4 py-1.5 bg-[#12243c] hover:bg-[#0c1a2f] rounded-xl text-sm text-sky-200 shadow-md border border-sky-500/20 hover:shadow-sky-500/20 transition-all duration-200"
+          >
+            <span>Hype Engine – {selectedModel}</span>
+            <svg
+              className={`w-4 h-4 transform transition-transform ${
+                dropdownOpen ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute left-0 top-full mt-2 bg-[#0a1e3a] border border-primary/30 rounded-lg shadow-lg z-50 w-52 animate-fade-in-down">
+              {[
+                { key: "h3", label: "h3 (Pro)" },
+                { key: "s2", label: "s2 (Plus)" },
+                { key: "s1", label: "s1" },
+              ].map(({ key, label }) => (
+                <div
+                  key={key}
+                  onClick={() => {
+                    setSelectedModel(key);
+                    setDropdownOpen(false);
+                  }}
+                  className="px-4 py-2 hover:bg-[#143b65] text-white text-sm cursor-pointer transition-colors"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+
+
+
 
       {image && (
         <div className="mb-3 flex items-center gap-2 bg-panel p-2 rounded border border-primary/30">
