@@ -2,8 +2,8 @@
 import React from "react";
 
 const tabs = [
-  { key: "signals", label: "Signals", icon: "/signals_tab3.gif" },
-  { key: "chat", label: "Assistant", icon: "/transparent.gif" },
+  { key: "signals", label: "Signals", icon: "/signals_tab.gif" },
+  { key: "chat", label: "Assistant", icon: "/chat_tab.gif" },
   { key: "news", label: "News", icon: "/news_tab.gif" },
 ];
 
@@ -20,9 +20,9 @@ export default function Tabs({ active, setTab }) {
         const iconClass =
               (isCenter
                 ? "w-32 h-32 -mb-[30px]" // flame pushed downward
-                : "w-24 h-24 -mb-2.5") + // others lifted upward
+                : "w-32 h-32 -mb-7") + // others lifted upward
               " object-contain transition-transform duration-200 " +
-              (isActive ? "opacity-100 scale-110" : "opacity-80") +
+              (isActive ? "opacity-100 scale-110" : "opacity-100") +
               " z-10";
 
 
