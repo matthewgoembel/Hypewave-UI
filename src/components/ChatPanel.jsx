@@ -140,6 +140,18 @@ export default function ChatPanel() {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
+      {messages.length === 0 && (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-contain opacity-80 pointer-events-none z-0 rounded-lg"
+        >
+          <source src="/chat_bg.webm" type="video/webm" />
+          Your browser does not support the video tag.
+        </video>
+      )}
       {snipping && (
         <div
           ref={overlayRef}
@@ -152,8 +164,9 @@ export default function ChatPanel() {
         <div className="relative inline-block w-max">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-1 px-4 py-1.5 bg-[#12243c] hover:bg-[#0c1a2f] rounded-xl text-sm text-sky-200 shadow-md border border-sky-500/20 hover:shadow-sky-500/20 transition-all duration-200"
+            className="flex items-center gap-1 text-sm text-white/90 hover:text-white transition-opacity"
           >
+
             <span>Hype Engine – {selectedModel}</span>
             <svg
               className={`w-4 h-4 transform transition-transform ${
@@ -169,7 +182,7 @@ export default function ChatPanel() {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-0 top-full mt-2 bg-[#0a1e3a] border border-primary/30 rounded-lg shadow-lg z-50 w-52 animate-fade-in-down">
+            <div className="absolute left-0 top-full mt-1 bg-[#0a1e3a]/90 border border-white/10 rounded shadow-md z-50 w-52">
               {[
                 { key: "h3", label: "h3 (Pro)" },
                 { key: "s2", label: "s2 (Plus)" },
@@ -281,7 +294,7 @@ export default function ChatPanel() {
           <button
             type="button"
             onClick={handleScreenshot}
-            className="text-sm text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded"
+            className="text-sm text-white bg-blue-700 hover:bg-blue-700 px-3 py-1 rounded"
           >
             📸
           </button>

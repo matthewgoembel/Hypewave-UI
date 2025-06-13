@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Tabs from "./components/Tabs";
 import SignalsPanel from "./components/SignalsPanel";
 import ChatPanel from "./components/ChatPanel";
@@ -11,6 +11,9 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("chat");
   const [panelWidth, setPanelWidth] = useState(400);
+  const [settingsHover, setSettingsHover] = useState(false);
+  const [unseen, setUnseen] = useState({ signals: 0, news: 0 });
+
   const minWidth = 300;
   const maxWidth = 600;
 
@@ -32,6 +35,31 @@ export default function App() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const handleTabChange = (newTab) => {
+    setTab(newTab);
+    setUnseen((prev) => ({ ...prev, [newTab]: 0 }));
+  };
+
+  // MOCK: Simulate new data events every 15s for signals & 25s for news
+  useEffect(() => {
+    const intervalSignals = setInterval(() => {
+      if (tab !== "signals") {
+        setUnseen((prev) => ({ ...prev, signals: prev.signals + 1 }));
+      }
+    }, 15000);
+
+    const intervalNews = setInterval(() => {
+      if (tab !== "news") {
+        setUnseen((prev) => ({ ...prev, news: prev.news + 1 }));
+      }
+    }, 25000);
+
+    return () => {
+      clearInterval(intervalSignals);
+      clearInterval(intervalNews);
+    };
+  }, [tab]);
+
   if (!open) return <HypewaveLogoToggle onClick={() => setOpen(true)} />;
 
   return (
@@ -49,7 +77,17 @@ export default function App() {
           <img src="https://api.dicebear.com/7.x/identicon/svg?seed=boardape" className="w-6 h-8 rounded-full" />
           <span className="text-sm font-medium">MattyG Tradz</span>
         </div>
-        <button className="text-gray-400 hover:text-white">⚙️</button>
+        <button
+          className="hover:opacity-80 transition"
+          onMouseEnter={() => setSettingsHover(true)}
+          onMouseLeave={() => setSettingsHover(false)}
+        >
+          <img
+            src={settingsHover ? "/settings_hover.gif" : "/settings.png"}
+            alt="Settings"
+            className="w-10 h-10"
+          />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 relative overflow-x-hidden">
@@ -93,7 +131,7 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <Tabs active={tab} setTab={setTab} />
+      <Tabs active={tab} setTab={handleTabChange} unseen={unseen} />
     </div>
   );
 }

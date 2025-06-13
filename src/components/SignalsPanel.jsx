@@ -35,7 +35,7 @@ export default function SignalsPanel() {
   return (
     <div className="flex flex-col h-full px-4 py-4 rounded bg-base shadow-xl">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-primary/80 text-s text-sky-200">Trade Signals</h2>
+        <h2 className="text-white/90 text-sm">Trade Signals</h2>
         <div className="flex space-x-2">
           <button
             onClick={fetchSignals}
