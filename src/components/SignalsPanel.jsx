@@ -10,12 +10,12 @@ export default function SignalsPanel() {
   const fetchAlerts = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/alerts/live?limit=50`);
+      const res = await fetch(`${API_BASE_URL}/signals/latest?limit=10`);
       const data = await res.json();
-      setAlerts(data.live_alerts || []);
+      setAlerts(data.latest_signals || []);
       setLoading(false);
     } catch (err) {
-      console.error("Failed to fetch alerts", err);
+      console.error("Failed to fetch signals", err);
       setLoading(false);
     }
   };
@@ -77,10 +77,8 @@ export default function SignalsPanel() {
                 });
 
             const resultText = output.result || "";
-
             let symbol = "Unknown";
 
-            // fallback always triggered from .result string
             const match = output.result?.match(/\$([A-Z]+)/);
             if (match && match[1]) {
               symbol = match[1].toUpperCase();
@@ -88,7 +86,6 @@ export default function SignalsPanel() {
 
             const isBullish = /long|bullish/.test(resultText.toLowerCase());
             const isBearish = /short|bearish/.test(resultText.toLowerCase());
-            console.log("FINAL SYMBOL:", symbol);
 
             return (
               <div
@@ -108,15 +105,33 @@ export default function SignalsPanel() {
                   <div className="text-xs text-primary/60">{formattedTime}</div>
                 </div>
 
-                <div className="text-white font-normal text-sm flex items-center space-x-2">
-                  {isBullish && (
-                    <img src="/bullish.png" alt="bullish" className="w-4 h-4" />
-                  )}
-                  {isBearish && (
-                    <img src="/bearish.png" alt="bearish" className="w-4 h-4" />
-                  )}
-                  <span>{resultText}</span>
+                <div className="text-white font-medium text-sm flex items-center space-x-2">
+                  {isBullish && <img src="/bullish.png" alt="bullish" className="w-4 h-4" />}
+                  {isBearish && <img src="/bearish.png" alt="bearish" className="w-4 h-4" />}
+
+                  <span>
+                    {(() => {
+                      const match = resultText.match(/(LONG|SHORT)/i);
+                      const timeMatch = resultText.match(/\b(1m|5m|15m|1h|4h)\b/i);
+                      const confMatch = resultText.match(/Conf:\s*\d+/i);
+
+                      const direction = match ? match[1].toUpperCase() : "";
+                      const timeframe = timeMatch ? timeMatch[1] : "";
+                      const confidence = confMatch ? confMatch[0] : "";
+
+                      return `${direction} | ${timeframe} | ${confidence}`;
+                    })()}
+                  </span>
                 </div>
+
+                {/* Extra trade info if available */}
+                {output.entry && (
+                  <div className="text-sm text-primary/70 mt-2 space-y-1 ml-1">
+                    <div><b>Entry:</b> {output.entry}</div>
+                    <div><b>TP:</b> {output.tp || "—"} &nbsp;&nbsp;&nbsp; ⛔ <b>SL:</b> {output.sl || "—"}</div>
+                    <div><b>Thesis:</b> {output.thesis || "—"}</div>
+                  </div>
+                )}
               </div>
             );
           })
