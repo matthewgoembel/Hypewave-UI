@@ -1,20 +1,143 @@
-// src/components/ChatPanel.jsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import API_BASE_URL from "../config";
 
-
 export default function ChatPanel() {
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("s1"); // default model
+  const [selectedModel, setSelectedModel] = useState("s1");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [image, setImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [snipping, setSnipping] = useState(false);
   const overlayRef = useRef(null);
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (!snipping) return;
+
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100vw";
+    overlay.style.height = "100vh";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.3)";
+    overlay.style.cursor = "crosshair";
+    overlay.style.zIndex = 9999;
+    document.body.appendChild(overlay);
+    overlayRef.current = overlay;
+
+    const selection = document.createElement("div");
+    selection.style.position = "absolute";
+    selection.style.border = "2px solid #3dadff";
+    selection.style.background = "rgba(61,173,255,0.2)";
+    overlay.appendChild(selection);
+
+    let startX, startY;
+
+    const handleMouseDown = (e) => {
+      startX = e.clientX;
+      startY = e.clientY;
+      console.log("Snip started at:", startX, startY); // <-- Add this
+    };
+
+    const handleMouseMove = (e) => {
+      if (startX === undefined || startY === undefined) return;
+      const width = Math.abs(e.clientX - startX);
+      const height = Math.abs(e.clientY - startY);
+      const left = Math.min(e.clientX, startX);
+      const top = Math.min(e.clientY, startY);
+      Object.assign(selection.style, {
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${width}px`,
+        height: `${height}px`
+      });
+    };
+
+    const handleMouseUp = async () => {
+      console.log("Snip released");
+
+      const rect = selection.getBoundingClientRect();
+      overlay.remove();
+      setSnipping(false);
+
+      // ✅ Prevent zero-size snips
+      if (rect.width === 0 || rect.height === 0) {
+        alert("Please drag to select a valid area.");
+        return;
+      }
+
+      try {
+        const fullCanvas = await html2canvas(document.body, {
+          backgroundColor: null,
+          useCORS: true,
+          scrollX: -window.scrollX,
+          scrollY: -window.scrollY,
+        });
+
+        const croppedCanvas = document.createElement("canvas");
+        croppedCanvas.width = rect.width;
+        croppedCanvas.height = rect.height;
+
+        const ctx = croppedCanvas.getContext("2d");
+        ctx.drawImage(
+          fullCanvas,
+          rect.left,
+          rect.top,
+          rect.width,
+          rect.height,
+          0,
+          0,
+          rect.width,
+          rect.height
+        );
+
+        croppedCanvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], "snip.png", { type: "image/png" });
+            const preview = URL.createObjectURL(file);
+            setImage(file);
+            setPreviewUrl(preview);
+          }
+        });
+      } catch (error) {
+        console.error("Snip error:", error);
+        alert("Something went wrong while snipping. Try again.");
+      }
+    };
+
+    overlay.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [snipping]);
+
+  useEffect(() => {
+    // optional cleanup AFTER timeout, to avoid revoking too early
+    const timeout = setTimeout(() => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    }, 10000); // wait 10s before cleanup
+
+    return () => clearTimeout(timeout);
+  }, [previewUrl]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,12 +145,13 @@ export default function ChatPanel() {
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", text: input, image },
+      { role: "user", text: input, imageUrl: previewUrl }, // ✅ store only the URL
       { role: "ai", type: "loading" }
     ]);
     setInput("");
     setImage(null);
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    setPreviewUrl(null);
+
 
     const formData = new FormData();
     formData.append("input", input);
@@ -64,72 +188,18 @@ export default function ChatPanel() {
     }
   };
 
-  const handleScreenshot = () => {
-    setSnipping(true);
+  const handleScreenshot = () => setSnipping(true);
+  const removeImage = () => {
+    setImage(null);
+    setPreviewUrl(null);
   };
-
-  const handleSnipStart = (e) => {
-    const startX = e.clientX;
-    const startY = e.clientY;
-
-    const overlay = overlayRef.current;
-    const selection = document.createElement("div");
-    selection.style.position = "absolute";
-    selection.style.border = "2px solid #3dadff";
-    selection.style.background = "rgba(61,173,255,0.2)";
-    overlay.appendChild(selection);
-
-    const handleMouseMove = (moveEvent) => {
-      const width = Math.abs(moveEvent.clientX - startX);
-      const height = Math.abs(moveEvent.clientY - startY);
-      const left = Math.min(moveEvent.clientX, startX);
-      const top = Math.min(moveEvent.clientY, startY);
-
-      selection.style.left = `${left}px`;
-      selection.style.top = `${top}px`;
-      selection.style.width = `${width}px`;
-      selection.style.height = `${height}px`;
-    };
-
-    const handleMouseUp = async () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      const rect = selection.getBoundingClientRect();
-      overlay.removeChild(selection);
-      setSnipping(false);
-
-      setTimeout(async () => {
-        const canvas = await html2canvas(document.body, {
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height,
-          backgroundColor: null,
-          useCORS: true,
-          scrollX: -window.scrollX,
-          scrollY: -window.scrollY,
-          windowWidth: document.body.scrollWidth,
-          windowHeight: document.body.scrollHeight,
-        });
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], "snip.png", { type: "image/png" });
-            setImage(file);
-          }
-        });
-      }, 100);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const removeImage = () => setImage(null);
   const handleDrop = (e) => {
     e.preventDefault();
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles && droppedFiles.length > 0) {
       setImage(droppedFiles[0]);
+      const preview = URL.createObjectURL(droppedFiles[0]);
+      setPreviewUrl(preview);
     }
   };
   const handleDragOver = (e) => e.preventDefault();
@@ -152,13 +222,6 @@ export default function ChatPanel() {
           Your browser does not support the video tag.
         </video>
       )}
-      {snipping && (
-        <div
-          ref={overlayRef}
-          onMouseDown={handleSnipStart}
-          className="fixed top-0 left-0 w-full h-full bg-black/30 z-50 cursor-crosshair"
-        />
-      )}
 
       <div className="relative mb-4 px-4">
         <div className="relative inline-block w-max">
@@ -166,12 +229,9 @@ export default function ChatPanel() {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-1 text-sm text-white/90 hover:text-white transition-opacity"
           >
-
             <span>Hype Engine – {selectedModel}</span>
             <svg
-              className={`w-4 h-4 transform transition-transform ${
-                dropdownOpen ? "rotate-180" : ""
-              }`}
+              className={`w-4 h-4 transform transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -183,11 +243,7 @@ export default function ChatPanel() {
 
           {dropdownOpen && (
             <div className="absolute left-0 top-full mt-1 bg-[#0a1e3a]/90 border border-white/10 rounded shadow-md z-50 w-52">
-              {[
-                { key: "h3", label: "h3 (Pro)" },
-                { key: "s2", label: "s2 (Plus)" },
-                { key: "s1", label: "s1" },
-              ].map(({ key, label }) => (
+              {["h3", "s2", "s1"].map((key) => (
                 <div
                   key={key}
                   onClick={() => {
@@ -196,17 +252,13 @@ export default function ChatPanel() {
                   }}
                   className="px-4 py-2 hover:bg-[#143b65] text-white text-sm cursor-pointer transition-colors"
                 >
-                  {label}
+                  {key === "h3" ? "h3 (Pro)" : key === "s2" ? "s2 (Plus)" : "s1"}
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
-
-
-
-
 
       {image && (
         <div className="mb-3 flex items-center gap-2 bg-panel p-2 rounded border border-primary/30">
@@ -231,11 +283,7 @@ export default function ChatPanel() {
         {messages.map((m, idx) => (
           <div
             key={idx}
-            className={`p-3 rounded text-sm whitespace-pre-wrap shadow-sm transition-all duration-150 ${
-              m.role === "user"
-                ? "bg-panel text-white"
-                : "bg-chat text-primary"
-            }`}
+            className={`p-3 rounded text-sm whitespace-pre-wrap shadow-sm transition-all duration-150 ${m.role === "user" ? "bg-panel text-white" : "bg-chat text-primary"}`}
           >
             <div className="flex items-center justify-between mb-1">
               <strong className="text-xs opacity-60">
@@ -250,9 +298,9 @@ export default function ChatPanel() {
               )}
             </div>
 
-            {m.image && (
+            {m.imageUrl && (
               <img
-                src={URL.createObjectURL(m.image)}
+                src={m.imageUrl}
                 alt="uploaded chart"
                 className="mb-2 rounded"
               />
@@ -264,8 +312,6 @@ export default function ChatPanel() {
                 className="text-[#bfc9dc] leading-relaxed"
               ></div>
             )}
-
-
           </div>
         ))}
       </div>

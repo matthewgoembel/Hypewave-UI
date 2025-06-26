@@ -70,7 +70,7 @@ export default function NewsPanel() {
             </div>
 
             {/* Message Text */}
-            <div className="text-sm font-medium text-white/90 whitespace-pre-wrap mb-2">
+            <div className="text-sm text-white/90 whitespace-pre-wrap mb-2">
               {news.text}
             </div>
 
