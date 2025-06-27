@@ -5,6 +5,7 @@ export default function SignalsPanel() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUTC, setShowUTC] = useState(false);
+  const [feedbackMap, setFeedbackMap] = useState({});
   const scrollRef = useRef(null);
 
   const fetchAlerts = async () => {
@@ -17,6 +18,21 @@ export default function SignalsPanel() {
     } catch (err) {
       console.error("Failed to fetch signals", err);
       setLoading(false);
+    }
+  };
+
+  const handleFeedback = async (signalId, type) => {
+    if (feedbackMap[signalId] === type) return;
+
+    try {
+      await fetch(`${API_BASE_URL}/signals/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signal_id: signalId, feedback: type })
+      });
+      setFeedbackMap(prev => ({ ...prev, [signalId]: type }));
+    } catch (err) {
+      console.error("Feedback error:", err);
     }
   };
 
@@ -60,20 +76,19 @@ export default function SignalsPanel() {
         ) : (
           [...alerts].reverse().map((a, idx) => {
             const output = a.output || {};
-            const rawTime = new Date(a.created_at);
-            const adjustedTime = new Date(rawTime.getTime() - 4 * 60 * 60 * 1000); // EST offset
-
+            const rawTime = new Date(a.created_at + "Z");
             const formattedTime = showUTC
-              ? adjustedTime.toLocaleString('en-US', {
-                  timeZone: 'UTC',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
+              ? rawTime.toLocaleString("en-US", {
+                  timeZone: "UTC",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
                 })
-              : adjustedTime.toLocaleString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
+              : rawTime.toLocaleString("en-US", {
+                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
                 });
 
             const resultText = output.result || "";
@@ -90,7 +105,7 @@ export default function SignalsPanel() {
             return (
               <div
                 key={idx}
-                className="bg-panel p-3 rounded-md border border-primary/20 shadow text-sm text-white"
+                className="relative bg-panel p-3 rounded-md border border-primary/20 shadow text-sm text-white"
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center space-x-2">
@@ -102,7 +117,32 @@ export default function SignalsPanel() {
                     />
                     <span className="font-bold text-sky-300">${symbol}</span>
                   </div>
-                  <div className="text-xs text-primary/60">{formattedTime}</div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-primary/60">{formattedTime}</div>
+                    <div className="flex space-x-1">
+                      <img
+                        src={
+                          feedbackMap[a.signal_id] === "up"
+                            ? "/thumbs_up.png"
+                            : "/thumbs_up_empty.png"
+                        }
+                        alt="thumbs up"
+                        className="w-5 h-5 cursor-pointer transition-transform duration-150 ease-in-out hover:scale-125"
+                        onClick={() => handleFeedback(a.signal_id, "up")}
+                      />
+
+                      <img
+                        src={
+                          feedbackMap[a.signal_id] === "down"
+                            ? "/thumbs_down.png"
+                            : "/thumbs_down_empty.png"
+                        }
+                        alt="thumbs down"
+                        className="w-5 h-5 cursor-pointer transition-transform duration-150 ease-in-out hover:scale-125"
+                        onClick={() => handleFeedback(a.signal_id, "down")}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-white font-medium text-sm flex items-center space-x-2">
@@ -124,11 +164,10 @@ export default function SignalsPanel() {
                   </span>
                 </div>
 
-                {/* Extra trade info if available */}
                 {output.entry && (
                   <div className="text-sm text-primary/70 mt-2 space-y-1 ml-1">
                     <div><b>Entry:</b> {output.entry}</div>
-                    <div><b>TP:</b> {output.tp || "—"} &nbsp;&nbsp;&nbsp; ⛔ <b>SL:</b> {output.sl || "—"}</div>
+                    <div><b>TP:</b> {output.tp || "—"} &nbsp;&nbsp;&nbsp; <b>SL:</b> {output.sl || "—"}</div>
                     <div><b>Thesis:</b> {output.thesis || "—"}</div>
                   </div>
                 )}
