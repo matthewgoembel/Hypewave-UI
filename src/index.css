@@ -24,15 +24,37 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #3dadff; /* Flame blue */
-  border-radius: 8px;
+  background-color: #006cb9; /* Flame blue */
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #61caff; /* Lighter flame blue */
+  background-color: #0099ff; /* Lighter flame blue */
 }
 
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+@keyframes flameFlicker {
+  0% { transform: rotate(-1deg) scale(1); }
+  50% { transform: rotate(1deg) scale(1.05); }
+  100% { transform: rotate(-1deg) scale(1); }
+}
+
+@keyframes blink {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); }
+}
+
+#flameMain {
+  transform-origin: bottom center;
+  animation: flameFlicker 1s infinite ease-in-out;
+}
+
+#eyeLeft,
+#eyeRight {
+  transform-origin: center;
+  animation: blink 4s infinite;
 }
 

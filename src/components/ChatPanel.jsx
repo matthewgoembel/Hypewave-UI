@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import API_BASE_URL from "../config";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function ChatPanel() {
   const [input, setInput] = useState("");
@@ -14,6 +16,7 @@ export default function ChatPanel() {
   const [snipping, setSnipping] = useState(false);
   const overlayRef = useRef(null);
   const scrollRef = useRef(null);
+  const isInputEmpty = input.trim().length === 0;
 
   useEffect(() => {
     if (!snipping) return;
@@ -283,7 +286,9 @@ export default function ChatPanel() {
         {messages.map((m, idx) => (
           <div
             key={idx}
-            className={`p-3 rounded text-sm whitespace-pre-wrap shadow-sm transition-all duration-150 ${m.role === "user" ? "bg-panel text-white" : "bg-chat text-primary"}`}
+            className={`p-3 rounded text-sm whitespace-pre-wrap shadow-sm transition-all duration-150 ${
+              m.role === "user" ? "bg-panel text-white" : "bg-chat text-primary"
+            }`}
           >
             <div className="flex items-center justify-between mb-1">
               <strong className="text-xs opacity-60">
@@ -307,10 +312,20 @@ export default function ChatPanel() {
             )}
 
             {m.type !== "loading" && (
-              <div
-                dangerouslySetInnerHTML={{ __html: m.text }}
-                className="text-[#bfc9dc] leading-relaxed"
-              ></div>
+              <>
+                {m.role === "user" ? (
+                  // User message: plain text
+                  <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
+                    {m.text}
+                  </div>
+                ) : (
+                  // AI message: raw HTML
+                  <div
+                    className="text-white/90 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: m.text }}
+                  />
+                )}
+              </>
             )}
           </div>
         ))}
@@ -319,49 +334,60 @@ export default function ChatPanel() {
       {error && <p className="text-red-400 text-sm mb-2">⚠️ {error}</p>}
 
       <form
-        onSubmit={handleSubmit}
-        className="flex gap-2 items-center border-t border-primary/30 pt-2"
-      >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything"
-          className="flex-1 bg-panel text-white p-3 rounded resize-none placeholder-primary/70 focus:outline-none"
-          rows={2}
-        />
+      onSubmit={handleSubmit}
+      className="flex gap-2 border-t border-primary/30 pt-2"
+    >
+      {/* TEXTAREA */}
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Ask anything"
+        className="flex-1 bg-panel text-white p-3 rounded resize-none placeholder-primary/70 focus:outline-none min-h-[3.5rem]"
+        rows={2}
+      />
 
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="file-upload"
-            className="text-sm px-3 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded cursor-pointer"
-          >
-            🔗
-          </label>
-          <button
-            type="button"
-            onClick={handleScreenshot}
-            className="text-sm text-white bg-blue-700 hover:bg-blue-700 px-3 py-1 rounded"
-          >
-            📸
-          </button>
-        </div>
-
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
-          className="hidden"
-          id="file-upload"
-        />
-
+      {/* RIGHT COLUMN */}
+      <div className="flex flex-col items-center gap-2">
+        {/* ASK BUTTON */}
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 text-sm rounded bg-primary hover:bg-[#61caff] text-white font-semibold disabled:opacity-40"
+          className="group flex items-center justify-center w-20 h-12"
         >
-          {loading ? "..." : "Ask"}
+          <img
+            src={isInputEmpty ? "/ask.gif" : "/ask_active.png"}
+            alt="Ask"
+            className="
+              w-20 h-20
+              transition
+              duration-200
+              group-hover:brightness-110
+              group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.1)]
+            "
+          />
         </button>
-      </form>
+
+        {/* BOTTOM ROW BUTTONS */}
+        <div className="flex gap-2">
+          {/* LINK BUTTON */}
+          <label
+            htmlFor="file-upload"
+            className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center cursor-pointer transition"
+          >
+            <img src="/link.png" alt="Attach" className="w-8 h-8" />
+          </label>
+
+          {/* SNIP BUTTON */}
+          <button
+            type="button"
+            onClick={handleScreenshot}
+            className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center transition"
+          >
+            <img src="/screenshot.png" alt="Screenshot" className="w-9 h-9" />
+          </button>
+        </div>
+      </div>
+</form>
     </div>
   );
 }

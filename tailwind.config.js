@@ -15,19 +15,17 @@ module.exports = {
         chat: "#07183b",
       },
       borderRadius: {
-        DEFAULT: "1rem", // rounded by default
+        DEFAULT: "1rem",
         xl: "1.25rem",
         '2xl': "1.5rem",
       },
-       spacing: {
-        // “33” here makes “w-33” → 8.25 rem (i.e. 132px), or whatever you choose
-        // Adjust the value until it’s exactly the pixel size you want (e.g. “33px”: “33px”).
+      spacing: {
         '34': '34px',
         '129': '129px',
       }
     },
   },
-  plugins: [],
-
-  
+  plugins: [
+    require('@tailwindcss/typography'),  // ✅ Added this line
+  ],
 };
