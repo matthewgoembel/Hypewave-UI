@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { Player } from "@lottiefiles/react-lottie-player";
 import API_BASE_URL from "../config";
+import hbuttonAnimation from "../assets/hbutton.json";
+import buttonAnimation from "../assets/hbutton.webm";
+
 
 export default function NewsPanel() {
   const [posts, setPosts] = useState([]);
@@ -8,6 +12,11 @@ export default function NewsPanel() {
   const [showUTC, setShowUTC] = useState(false);
   const [showTruthSocial, setShowTruthSocial] = useState(true);
   const scrollRef = useRef(null);
+  const [dailyEvents, setDailyEvents] = useState([]);
+  const [showDailyNews, setShowDailyNews] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+
+  const lottieRef = useRef(null);
 
   const fetchPosts = async () => {
     try {
@@ -20,6 +29,19 @@ export default function NewsPanel() {
     } catch (err) {
       console.error("Failed to fetch posts", err);
       setLoading(false);
+    }
+  };
+
+  const fetchDailyEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      const res = await fetch(`${API_BASE_URL}/forex/calendar/today`);
+      const data = await res.json();
+      setDailyEvents(data.events || []);
+      setLoadingEvents(false);
+    } catch (err) {
+      console.error("Failed to fetch daily events", err);
+      setLoadingEvents(false);
     }
   };
 
@@ -45,12 +67,10 @@ export default function NewsPanel() {
       .replace(/(^|\s)(\$[a-zA-Z0-9_]+)/g, "$1[$2](https://twitter.com/search?q=$2)");
   }
 
-  // Filter posts if needed
   const postsToRender = showTruthSocial
     ? posts
     : posts.filter((p) => p.source !== "realDonaldTrump");
 
-  // Sort newest to oldest
   const sortedPosts = [...postsToRender].sort(
     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
   );
@@ -61,7 +81,29 @@ export default function NewsPanel() {
         <h2 className="text-medium text-white/90 font-semibold tracking-wide">
           News Alerts
         </h2>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 items-center">
+          {/* Lottie Button */}
+          <div
+            onClick={() => {
+              fetchDailyEvents();
+              setShowDailyNews(true);
+            }}
+            className="group relative cursor-pointer rounded-full"
+            title="Daily News"
+          >
+            <div className=" rounded-full transition duration-200 on-hover:cyan-400"></div>
+            <video
+              src={buttonAnimation}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="relative w-12 h-12 object-cover"
+            />
+          </div>
+
+
+          {/* Other Buttons */}
           <button
             onClick={() => setShowTruthSocial(!showTruthSocial)}
             className="p-0"
@@ -100,7 +142,11 @@ export default function NewsPanel() {
           <div className="text-sm text-white/50">No messages found</div>
         ) : (
           sortedPosts.map((news) => {
-           const timestamp = new Date(news.timestamp.endsWith("Z") ? news.timestamp : news.timestamp + "Z");
+            const timestamp = new Date(
+              news.timestamp.endsWith("Z")
+                ? news.timestamp
+                : news.timestamp + "Z"
+            );
             const formattedTime = showUTC
               ? timestamp.toLocaleString("en-US", {
                   timeZone: "UTC",
@@ -166,17 +212,21 @@ export default function NewsPanel() {
                       </ReactMarkdown>
                     </div>
                     {news.media_urls && news.media_urls.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {news.media_urls.map((url, idx) => (
-                        <img
-                          key={idx}
-                          src={url.startsWith("http") ? url : `${API_BASE_URL}${url}`}
-                          alt="Media"
-                          className="rounded max-h-60 object-cover"
-                        />
-                      ))}
-                    </div>
-                  )}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {news.media_urls.map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={
+                              url.startsWith("http")
+                                ? url
+                                : `${API_BASE_URL}${url}`
+                            }
+                            alt="Media"
+                            className="rounded max-h-60 object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="-ml-3.5 -mr-2 border-b border-white/10 mt-2 -mb-2.5"></div>
@@ -185,6 +235,54 @@ export default function NewsPanel() {
           })
         )}
       </div>
+
+      {showDailyNews && (
+        <div className="absolute top-16 left-4 right-6 z-40 bg-panel border border-black rounded shadow-lg p-4">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-base font-semibold">Today's Economic Events</h2>
+            <button
+              onClick={() => setShowDailyNews(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          {loadingEvents ? (
+            <div className="text-primary text-sm">Loading...</div>
+          ) : dailyEvents.length === 0 ? (
+            <div className="text-sm text-white/50">No events found.</div>
+          ) : (
+            <table className="w-full text-xs border-collapse">
+              <thead className="border-b border-gray-600">
+                <tr>
+                  <th className="text-left py-1">Date</th>
+                  <th className="text-left py-1">Time</th>
+                  <th className="text-left py-1">Currency</th>
+                  <th className="text-left py-1">Impact</th>
+                  <th className="text-left py-1">Detail</th>
+                  <th className="text-left py-1">Actual</th>
+                  <th className="text-left py-1">Forecast</th>
+                  <th className="text-left py-1">Previous</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyEvents.map((e, idx) => (
+                  <tr key={idx} className="border-b border-gray-700">
+                    <td className="py-1">{e.date}</td>
+                    <td className="py-1">{e.time}</td>
+                    <td className="py-1">{e.currency}</td>
+                    <td className="py-1">{e.impact}</td>
+                    <td className="py-1">{e.detail}</td>
+                    <td className="py-1">{e.actual}</td>
+                    <td className="py-1">{e.forecast}</td>
+                    <td className="py-1">{e.previous}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

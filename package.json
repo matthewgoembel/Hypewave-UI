@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lottiefiles/react-lottie-player": "^3.6.0",
     "@tailwindcss/typography": "^0.5.16",
     "framer-motion": "^12.16.0",
     "html2canvas": "^1.4.1",
+    "lottie-react": "^2.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0"
