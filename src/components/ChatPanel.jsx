@@ -1,170 +1,123 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext } from "react";
 import html2canvas from "html2canvas";
 import API_BASE_URL from "../config";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ChatContext } from "../contexts/ChatContext";
+import { AuthContext } from "../contexts/AuthContext";
 
 export default function ChatPanel() {
+  
+  const { messages, addMessage, clearMessages } = useContext(ChatContext);
+  const { token, isAuthenticated } = useContext(AuthContext);
+  const historyLoaded = useRef(false);
+
+  
+
+  if (isAuthenticated && !token) {
+    return (
+      <div className="flex items-center justify-center h-full text-primary">
+        Loading chat...
+      </div>
+    );
+  }
+  
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("s1");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState(null);
   const [snipping, setSnipping] = useState(false);
+
   const overlayRef = useRef(null);
   const scrollRef = useRef(null);
+
   const isInputEmpty = input.trim().length === 0;
 
-  useEffect(() => {
-    if (!snipping) return;
-
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100vw";
-    overlay.style.height = "100vh";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.3)";
-    overlay.style.cursor = "crosshair";
-    overlay.style.zIndex = 9999;
-    document.body.appendChild(overlay);
-    overlayRef.current = overlay;
-
-    const selection = document.createElement("div");
-    selection.style.position = "absolute";
-    selection.style.border = "2px solid #3dadff";
-    selection.style.background = "rgba(61,173,255,0.2)";
-    overlay.appendChild(selection);
-
-    let startX, startY;
-
-    const handleMouseDown = (e) => {
-      startX = e.clientX;
-      startY = e.clientY;
-      console.log("Snip started at:", startX, startY); // <-- Add this
-    };
-
-    const handleMouseMove = (e) => {
-      if (startX === undefined || startY === undefined) return;
-      const width = Math.abs(e.clientX - startX);
-      const height = Math.abs(e.clientY - startY);
-      const left = Math.min(e.clientX, startX);
-      const top = Math.min(e.clientY, startY);
-      Object.assign(selection.style, {
-        left: `${left}px`,
-        top: `${top}px`,
-        width: `${width}px`,
-        height: `${height}px`
-      });
-    };
-
-    const handleMouseUp = async () => {
-      console.log("Snip released");
-
-      const rect = selection.getBoundingClientRect();
-      overlay.remove();
-      setSnipping(false);
-
-      // ✅ Prevent zero-size snips
-      if (rect.width === 0 || rect.height === 0) {
-        alert("Please drag to select a valid area.");
-        return;
-      }
-
-      try {
-        const fullCanvas = await html2canvas(document.body, {
-          backgroundColor: null,
-          useCORS: true,
-          scrollX: -window.scrollX,
-          scrollY: -window.scrollY,
-        });
-
-        const croppedCanvas = document.createElement("canvas");
-        croppedCanvas.width = rect.width;
-        croppedCanvas.height = rect.height;
-
-        const ctx = croppedCanvas.getContext("2d");
-        ctx.drawImage(
-          fullCanvas,
-          rect.left,
-          rect.top,
-          rect.width,
-          rect.height,
-          0,
-          0,
-          rect.width,
-          rect.height
-        );
-
-        croppedCanvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], "snip.png", { type: "image/png" });
-            const preview = URL.createObjectURL(file);
-            setImage(file);
-            setPreviewUrl(preview);
-          }
-        });
-      } catch (error) {
-        console.error("Snip error:", error);
-        alert("Something went wrong while snipping. Try again.");
-      }
-    };
-
-    overlay.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [snipping]);
-
-  useEffect(() => {
-    // optional cleanup AFTER timeout, to avoid revoking too early
-    const timeout = setTimeout(() => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    }, 10000); // wait 10s before cleanup
-
-    return () => clearTimeout(timeout);
-  }, [previewUrl]);
-
+  // Scroll to bottom on messages update
   useEffect(() => {
     const container = scrollRef.current;
     if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     }
   }, [messages]);
+
+// Load chat history when logged in
+  useEffect(() => {
+  if (!isAuthenticated || !token) return;
+
+  if (historyLoaded.current) return; // ✅ Already loaded, skip
+
+  let isMounted = true;
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/chat/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Failed to load chat history");
+      const data = await res.json();
+
+      if (isMounted) {
+        clearMessages();
+        data.forEach((m) => {
+          addMessage({
+            role: m.role,
+            text: m.text,
+            timestamp: m.timestamp,
+          });
+        });
+        historyLoaded.current = true; // ✅ Mark as loaded
+      }
+    } catch (err) {
+      console.error("Error loading chat history:", err);
+    } finally {
+      if (isMounted) setLoadingHistory(false);
+    }
+  };
+
+  loadHistory();
+
+  return () => {
+    isMounted = false;
+  };
+}, [isAuthenticated, token]);
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: input, imageUrl: previewUrl }, // ✅ store only the URL
-      { role: "ai", type: "loading" }
-    ]);
+    addMessage({
+      role: "user",
+      text: input,
+      imageUrl: previewUrl,
+    });
+    addMessage({
+      role: "ai",
+      type: "loading",
+    });
+
     setInput("");
     setImage(null);
     setPreviewUrl(null);
-
+    setLoading(true);
+    setError(null);
 
     const formData = new FormData();
     formData.append("input", input);
     if (image) formData.append("image", image);
 
-    setLoading(true);
-    setError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await res.json();
@@ -173,13 +126,11 @@ export default function ChatPanel() {
         throw new Error(data.error || "No response received.");
       }
 
-      setMessages((prev) => {
-        const updated = [...prev];
-        const loadingIndex = updated.findIndex((m) => m.type === "loading");
-        if (loadingIndex !== -1) {
-          updated[loadingIndex] = { role: "ai", text: data.result };
-        }
-        return updated;
+      // Remove the loading message and add real response
+      clearMessages();
+      addMessage({
+        role: "ai",
+        text: data.result,
       });
 
       scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -213,7 +164,11 @@ export default function ChatPanel() {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-      {messages.length === 0 && (
+      {loadingHistory && (
+        <p className="text-primary text-sm mb-2">Loading chat history...</p>
+      )}
+
+      {messages.length === 0 && !loadingHistory && (
         <video
           autoPlay
           loop
@@ -224,59 +179,6 @@ export default function ChatPanel() {
           <source src="/chat_bg.webm" type="video/webm" />
           Your browser does not support the video tag.
         </video>
-      )}
-
-      <div className="relative mb-4 px-4">
-        <div className="relative inline-block w-max">
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-1 text-sm text-white/90 hover:text-white transition-opacity"
-          >
-            <span>Hype Engine – {selectedModel}</span>
-            <svg
-              className={`w-4 h-4 transform transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-[#0a1e3a]/90 border border-white/10 rounded shadow-md z-50 w-52">
-              {["h3", "s2", "s1"].map((key) => (
-                <div
-                  key={key}
-                  onClick={() => {
-                    setSelectedModel(key);
-                    setDropdownOpen(false);
-                  }}
-                  className="px-4 py-2 hover:bg-[#143b65] text-white text-sm cursor-pointer transition-colors"
-                >
-                  {key === "h3" ? "h3 (Pro)" : key === "s2" ? "s2 (Plus)" : "s1"}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {image && (
-        <div className="mb-3 flex items-center gap-2 bg-panel p-2 rounded border border-primary/30">
-          <img
-            src={URL.createObjectURL(image)}
-            alt="preview"
-            className="w-12 h-12 rounded object-cover"
-          />
-          <button
-            onClick={removeImage}
-            className="text-red-400 text-xs hover:text-red-500"
-          >
-            ✖ Remove
-          </button>
-        </div>
       )}
 
       <div
@@ -314,12 +216,10 @@ export default function ChatPanel() {
             {m.type !== "loading" && (
               <>
                 {m.role === "user" ? (
-                  // User message: plain text
                   <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
                     {m.text}
                   </div>
                 ) : (
-                  // AI message: raw HTML
                   <div
                     className="text-white/90 leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: m.text }}
@@ -334,60 +234,48 @@ export default function ChatPanel() {
       {error && <p className="text-red-400 text-sm mb-2">⚠️ {error}</p>}
 
       <form
-      onSubmit={handleSubmit}
-      className="flex gap-2 border-t border-primary/30 pt-2"
-    >
-      {/* TEXTAREA */}
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask anything"
-        className="flex-1 bg-panel text-white p-3 rounded resize-none placeholder-primary/70 focus:outline-none min-h-[3.5rem]"
-        rows={2}
-      />
+        onSubmit={handleSubmit}
+        className="flex gap-2 border-t border-primary/30 pt-2"
+      >
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask anything"
+          className="flex-1 bg-panel text-white p-3 rounded resize-none placeholder-primary/70 focus:outline-none min-h-[3.5rem]"
+          rows={2}
+        />
 
-      {/* RIGHT COLUMN */}
-      <div className="flex flex-col items-center gap-2">
-        {/* ASK BUTTON */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="group flex items-center justify-center w-20 h-12"
-        >
-          <img
-            src={isInputEmpty ? "/ask.gif" : "/ask_active.png"}
-            alt="Ask"
-            className="
-              w-20 h-20
-              transition
-              duration-200
-              group-hover:brightness-110
-              group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.1)]
-            "
-          />
-        </button>
-
-        {/* BOTTOM ROW BUTTONS */}
-        <div className="flex gap-2">
-          {/* LINK BUTTON */}
-          <label
-            htmlFor="file-upload"
-            className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center cursor-pointer transition"
-          >
-            <img src="/link.png" alt="Attach" className="w-8 h-8" />
-          </label>
-
-          {/* SNIP BUTTON */}
+        <div className="flex flex-col items-center gap-2">
           <button
-            type="button"
-            onClick={handleScreenshot}
-            className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center transition"
+            type="submit"
+            disabled={loading}
+            className="group flex items-center justify-center w-20 h-12"
           >
-            <img src="/screenshot.png" alt="Screenshot" className="w-9 h-9" />
+            <img
+              src={isInputEmpty ? "/ask.gif" : "/ask_active.png"}
+              alt="Ask"
+              className="w-20 h-20 transition duration-200 group-hover:brightness-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.1)]"
+            />
           </button>
+
+          <div className="flex gap-2">
+            <label
+              htmlFor="file-upload"
+              className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center cursor-pointer transition"
+            >
+              <img src="/link.png" alt="Attach" className="w-8 h-8" />
+            </label>
+
+            <button
+              type="button"
+              onClick={handleScreenshot}
+              className="w-9 h-9 bg-[#143b65] hover:bg-[#1a4a7f] rounded flex items-center justify-center transition"
+            >
+              <img src="/screenshot.png" alt="Screenshot" className="w-9 h-9" />
+            </button>
+          </div>
         </div>
-      </div>
-</form>
+      </form>
     </div>
   );
 }

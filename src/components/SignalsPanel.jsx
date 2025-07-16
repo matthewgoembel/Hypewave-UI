@@ -150,27 +150,16 @@ export default function SignalsPanel() {
                   {isBearish && <img src="/bearish.png" alt="bearish" className="w-4 h-4" />}
 
                   <span>
-                    {(() => {
-                      const match = resultText.match(/(LONG|SHORT)/i);
-                      const timeMatch = resultText.match(/\b(1m|5m|15m|1h|4h)\b/i);
-                      const confMatch = resultText.match(/Conf:\s*\d+/i);
-
-                      const direction = match ? match[1].toUpperCase() : "";
-                      const timeframe = timeMatch ? timeMatch[1] : "";
-                      const confidence = confMatch ? confMatch[0] : "";
-
-                      return `${direction} | ${timeframe} | ${confidence}`;
-                    })()}
+                    {output.trade ? `${output.trade} | ${a.output.timeframe} | Confidence: ${output.confidence}%` : resultText}
                   </span>
                 </div>
 
-                {output.entry && (
-                  <div className="text-sm text-primary/70 mt-2 space-y-1 ml-1">
-                    <div><b>Entry:</b> {output.entry}</div>
-                    <div><b>TP:</b> {output.tp || "—"} &nbsp;&nbsp;&nbsp; <b>SL:</b> {output.sl || "—"}</div>
-                    <div><b>Thesis:</b> {output.thesis || "—"}</div>
-                  </div>
-                )}
+                <div className="text-sm text-primary/70 mt-2 space-y-1 ml-1">
+                  <div><b>Entry:</b> {output.entry ?? "—"}</div>
+                  <div><b>TP:</b> {output.tp ?? "—"} &nbsp;&nbsp;&nbsp; <b>SL:</b> {output.sl ?? "—"}</div>
+                  <div><b>Thesis:</b> {output.thesis ?? "—"}</div>
+                </div>
+
               </div>
             );
           })
